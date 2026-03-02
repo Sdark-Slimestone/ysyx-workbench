@@ -1,9 +1,7 @@
-// 伪代码中原有的头文件
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-
-// Verilator仿真必需的头文件（伪代码未提及，但运行必须加）
+// Verilator仿真必需的头文件
 #include "Vexample1.h"       // 对应Verilog模块名top，编译后自动生成
 #include "verilated_vcd_c.h"  // VCD波形生成必需的头文件
 #include "verilated.h"
@@ -17,7 +15,7 @@ int main(int argc, char* argv[]) {
     VerilatedVcdC* wave_trace = new VerilatedVcdC;  //波形相关
 
     top->trace(wave_trace, 99);                     // 绑定模块到波形跟踪器  void Vexample1::trace(VerilatedVcdC* tfp, int levels); level是层级
-    wave_trace->open("obj_dir/example1_wave.vcd");          // 打开波形文件（文件名也能改，比如example114_wave.vcd）
+    wave_trace->open("obj_dir/example1_wave.vcd");  // 打开波形文件（文件名也能改，比如example114_wave.vcd）
     vluint64_t sim_timestamp = 0;                   // 仿真时间戳（从0开始）
 
     int test_count = 100;  // 测试次数
