@@ -6,7 +6,7 @@ VERILATOR_FLAGS = -cc --exe --build --trace -CFLAGS "-DVL_DEBUG $(CFLAGS)"
 TOP_MODULE = example1
 TEST_FILE = test1
 # 文件路径定义
-CPP_FILE = ./csrc/$(TEST_FILE).cpp
+CPP_FILE = 
 VERILOG_FILE = ./vsrc/$(TOP_MODULE).v
 # 生成的可执行文件路径
 SIM_EXEC = ./obj_dir/V$(TOP_MODULE)
