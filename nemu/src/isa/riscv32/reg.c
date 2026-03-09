@@ -24,6 +24,9 @@ const char *regs[] = {
 };
 
 void isa_reg_display() {
+  for(int i = 0; i < 32; i++){
+    printf("%s = 0x%x (%d)\n", reg_name(i), gpr(i), gpr(i));   //参见/home/sdark/ysyx-workbench/nemu/src/isa/riscv32/local-include/reg.h
+  }
 }
 
 word_t isa_reg_str2val(const char *s, bool *success) {
