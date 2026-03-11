@@ -153,12 +153,23 @@ int main(int argc, char *argv[]) {
     fputs(code_buf, fp);
     fclose(fp);
 
-    // 编译临时文件，生成可执行文件 /tmp/.expr
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr 2>/dev/null");
-    if (ret != 0) continue;           // 编译失败则跳过该表达式
+    // 编译临时文件，捕获编译器输出，检查除零警告
+    char cmd[256];
+    snprintf(cmd, sizeof(cmd), "gcc /tmp/.code.c -o /tmp/.expr 2>&1");
+    FILE *compile_fp = popen(cmd, "r");
+    if (compile_fp == NULL) {
+      continue;  // popen失败也跳过
+    }
+    char output[1024] = {0};
+    size_t n = fread(output, 1, sizeof(output)-1, compile_fp);
+    (void)n;                                                            //忽略
+    int ret = pclose(compile_fp);
+    if (ret != 0 || strstr(output, "division by zero") != NULL) {
+      continue;  // 编译失败或出现除零警告，跳过该表达式
+    }
 
     // 运行可执行文件，并读取其输出
-    fp = popen("/tmp/.expr 2>/dev/null", "r");
+    fp = popen("/tmp/.expr", "r");
     assert(fp != NULL);
 
     unsigned result;
@@ -167,8 +178,8 @@ int main(int argc, char *argv[]) {
     if (scanned != 1 || status != 0) {
     // 运行失败（可能除零或其他错误），跳过该表达式
     continue;
-  }
-  printf("%u,%s\n", result, buf);
+    }
+    printf("%u,%s\n", result, buf);
   }
   return 0;
 }

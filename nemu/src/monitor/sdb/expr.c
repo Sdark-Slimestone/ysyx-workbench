@@ -97,8 +97,8 @@ static bool make_token(char *e) {                                               
         char *substr_start = e + position;           //匹配成功的子串（substr）的起始是e+position
         int substr_len = pmatch.rm_eo;               //匹配到的子串的长度是 eo-so = eo-0 = eo 你滴 明白？
 
-        Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
-            i, rules[i].regex, position, substr_len, substr_len, substr_start);
+        /*Log("match rules[%d] = \"%s\" at position %d with len %d: %.*s",
+            i, rules[i].regex, position, substr_len, substr_len, substr_start); */
 
         position += substr_len;  //然后把position偏移量往后挪 之前匹配到的字符串的长度/
 
