@@ -196,6 +196,7 @@ word_t expr(char *e, bool *success) {
   //上面是判断maketoken是否成功的，不管
   //maketoken处理后的token都在 tokens【】数组里，每个成员有 tokens【】。type和 str。
   //======备忘录结束======//
+
     uint32_t num_stack[1024]; //存数字 - 扩大为128
     int op_stack[1024]; //存符号类型 - 扩大为128
     int num_top = -1, op_top = -1;
@@ -203,15 +204,19 @@ word_t expr(char *e, bool *success) {
     for(int i = 0; i < nr_token; i++){//遍历tokens数组
       int type = tokens[i].type;
       if(type == TK_DEC){ // 是数字就压到数字栈
-        num_top++;
+        
         errno = 0;
-        unsigned long val = strtoul(tokens[i].str, NULL, 10);
+        unsigned long val = strtoul(tokens[i].str, NULL, 10);  //转无符号
+
         if (errno == ERANGE) {
           *success = false;
           printf("数字超出范围\n");
           return 0;
         }
-        num_stack[num_top] = (uint32_t)val;
+
+        num_top++;
+        num_stack[num_top] = (uint32_t)val; //压栈
+
       }
       else if(type == TK_LPAREN) {  //左括号
         op_top++;

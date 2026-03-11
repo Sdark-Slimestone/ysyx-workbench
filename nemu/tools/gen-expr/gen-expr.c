@@ -33,7 +33,7 @@ static char *code_format =
 "  return 0; "
 "}";
 
-// ------------------ 辅助函数：生成随机无符号数 ------------------
+//辅助函数：生成随机无符号数
 static void gen_num() {
   // 生成一个32位的随机无符号整数
   unsigned val = ((unsigned)rand() << 16) ^ (unsigned)rand(); //当作max是32000多少来着
@@ -45,7 +45,7 @@ static void gen_num() {
   strcat(buf, tmp);                     // 追加到全局缓冲区
 }
 
-// ------------------ 辅助函数：随机生成运算符 ------------------
+//辅助函数：随机生成运算符
 static char gen_rand_op() {
   int op = rand() % 4;                   // 0,1,2,3
   switch (op) {
@@ -56,13 +56,13 @@ static char gen_rand_op() {
   }
 }
 
-// ------------------ 辅助函数：向缓冲区添加单个字符 ------------------
+//辅助函数：向缓冲区添加单个字符
 static void gen(char c) {
   char str[2] = {c, '\0'};
   strcat(buf, str);
 }
 
-// ------------------ 辅助函数：随机插入空格 ------------------
+//辅助函数：随机插入空格
 static void gen_space() {
   // 以30%的概率插入空格
   if (rand() % 10 < 3) {
@@ -73,7 +73,7 @@ static void gen_space() {
   }
 }
 
-// ------------------ 核心递归生成函数 ------------------
+//核心递归生成函数
 // depth 控制递归深度，防止无限递归和缓冲区溢出
 static void gen_expr(int depth) {
   // 如果深度超过8，强制生成数字（递归终止条件）
@@ -115,7 +115,7 @@ static void gen_expr(int depth) {
       gen_expr(depth + 1);   // 左操作数
       gen_space();
       char op = gen_rand_op();
-      // 避免出现连续两个减号（--），这会被C语言解释为自减运算符
+      // 避免出现连续两个减号--，看起来似乎多余，但留着也没坏处吧（（（
       if (buf[0] != '\0' && buf[strlen(buf)-1] == '-' && op == '-') {
         strcat(buf, " ");    // 插入一个空格分隔
       }
@@ -126,13 +126,13 @@ static void gen_expr(int depth) {
   }
 }
 
-// ------------------ 对外接口：生成随机表达式 ------------------
+//对外接口：生成随机表达式
 static void gen_rand_expr() {
   buf[0] = '\0';        // 清空缓冲区
   gen_expr(0);          // 从深度0开始递归
 }
 
-// ------------------ 主函数 ------------------
+//主函数
 int main(int argc, char *argv[]) {
   int seed = time(0);
   srand(seed);
