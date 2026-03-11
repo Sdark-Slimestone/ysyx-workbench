@@ -20,9 +20,11 @@
 #include <assert.h>
 #include <string.h>
 
-// this should be enough
+// 缓冲区大小，用于存放生成的表达式
 static char buf[65536] = {};
-static char code_buf[65536 + 128] = {}; // a little larger than `buf`
+// 用于存放完整的C程序代码（比buf稍大，以便容纳模板）
+static char code_buf[65536 + 128] = {};
+// C程序的模板，其中 %s 会被替换为生成的表达式
 static char *code_format =
 "#include <stdio.h>\n"
 "int main() { "
@@ -31,39 +33,142 @@ static char *code_format =
 "  return 0; "
 "}";
 
-static void gen_rand_expr() {
-  buf[0] = '\0';
+// ------------------ 辅助函数：生成随机无符号数 ------------------
+static void gen_num() {
+  // 生成一个32位的随机无符号整数
+  unsigned val = ((unsigned)rand() << 16) ^ (unsigned)rand(); //当作max是32000多少来着
+  char tmp[20];                        // 足够存放10位数字 + 'u' + '\0'
+  sprintf(tmp, "%u", val);              // 将数值转为十进制字符串
+  int len = strlen(tmp);
+  tmp[len] = 'u';                       // 添加 'u' 后缀，强制为无符号常量
+  tmp[len + 1] = '\0';                   
+  strcat(buf, tmp);                     // 追加到全局缓冲区
 }
 
+// ------------------ 辅助函数：随机生成运算符 ------------------
+static char gen_rand_op() {
+  int op = rand() % 4;                   // 0,1,2,3
+  switch (op) {
+    case 0: return '+';
+    case 1: return '-';
+    case 2: return '*';
+    default: return '/';
+  }
+}
+
+// ------------------ 辅助函数：向缓冲区添加单个字符 ------------------
+static void gen(char c) {
+  char str[2] = {c, '\0'};
+  strcat(buf, str);
+}
+
+// ------------------ 辅助函数：随机插入空格 ------------------
+static void gen_space() {
+  // 以30%的概率插入空格
+  if (rand() % 10 < 3) {
+    int n = rand() % 3 + 1;              // 随机1~3个空格
+    for (int i = 0; i < n; i++) {
+      strcat(buf, " ");
+    }
+  }
+}
+
+// ------------------ 核心递归生成函数 ------------------
+// depth 控制递归深度，防止无限递归和缓冲区溢出
+static void gen_expr(int depth) {
+  // 如果深度超过8，强制生成数字（递归终止条件）
+  if (depth > 6) {
+    gen_num();
+    return;
+  }
+
+  int choice = rand() % 4;               // 随机选择四种生成方式之一
+  switch (choice) {
+    case 0:  // 直接生成一个数字
+      gen_space();   // 可选的空格
+      gen_num();
+      gen_space();
+      break;
+
+    case 1:  // 生成括号表达式: ( expr )
+      gen_space();
+      gen('(');
+      gen_space();
+      gen_expr(depth + 1);   // 递归生成括号内的表达式，深度+1
+      gen_space();
+      gen(')');
+      gen_space();
+      break;
+    case 2: //生成一元表达式 -
+      gen_space();
+      if(buf[0] != '\0' && buf[strlen(buf) - 1] == '-'){
+        strcat(buf, " ");
+      }
+      gen('-');
+      gen('(');
+      gen_space();
+      gen_expr(depth + 1);
+      gen_space();
+      gen(')');
+      break;
+    default: // 生成二元运算: expr op expr
+      gen_expr(depth + 1);   // 左操作数
+      gen_space();
+      char op = gen_rand_op();
+      // 避免出现连续两个减号（--），这会被C语言解释为自减运算符
+      if (buf[0] != '\0' && buf[strlen(buf)-1] == '-' && op == '-') {
+        strcat(buf, " ");    // 插入一个空格分隔
+      }
+      gen(op);               // 添加运算符
+      gen_space();
+      gen_expr(depth + 1);   // 右操作数
+      break;
+  }
+}
+
+// ------------------ 对外接口：生成随机表达式 ------------------
+static void gen_rand_expr() {
+  buf[0] = '\0';        // 清空缓冲区
+  gen_expr(0);          // 从深度0开始递归
+}
+
+// ------------------ 主函数 ------------------
 int main(int argc, char *argv[]) {
   int seed = time(0);
   srand(seed);
   int loop = 1;
   if (argc > 1) {
-    sscanf(argv[1], "%d", &loop);
+    sscanf(argv[1], "%d", &loop);   // 从命令行获取要生成的表达式数量
   }
-  int i;
-  for (i = 0; i < loop; i ++) {
-    gen_rand_expr();
 
+  for (int i = 0; i < loop; i++) {
+    gen_rand_expr();                 // 生成随机表达式到 buf
+
+    // 将表达式填入模板，得到完整的C程序
     sprintf(code_buf, code_format, buf);
 
+    // 将C程序写入临时文件
     FILE *fp = fopen("/tmp/.code.c", "w");
     assert(fp != NULL);
     fputs(code_buf, fp);
     fclose(fp);
 
-    int ret = system("gcc /tmp/.code.c -o /tmp/.expr");
-    if (ret != 0) continue;
+    // 编译临时文件，生成可执行文件 /tmp/.expr
+    int ret = system("gcc /tmp/.code.c -o /tmp/.expr 2>/dev/null");
+    if (ret != 0) continue;           // 编译失败则跳过该表达式
 
-    fp = popen("/tmp/.expr", "r");
+    // 运行可执行文件，并读取其输出
+    fp = popen("/tmp/.expr 2>/dev/null", "r");
     assert(fp != NULL);
 
-    int result;
-    ret = fscanf(fp, "%d", &result);
-    pclose(fp);
-
-    printf("%u %s\n", result, buf);
+    unsigned result;
+    int scanned = fscanf(fp, "%u", &result);
+    int status = pclose(fp);
+    if (scanned != 1 || status != 0) {
+    // 运行失败（可能除零或其他错误），跳过该表达式
+    continue;
+  }
+  printf("%u,%s\n", result, buf);
   }
   return 0;
 }

@@ -41,7 +41,6 @@ static struct rule {
   int token_type;
 } rules[] = {
 
-  {"[0-9]+u", TK_DEC},  //处理带u后置的
   {"[0-9]+", TK_DEC},        
   {"\\+", TK_ADD},           
   {"\\-", TK_SUB},           
@@ -82,17 +81,44 @@ typedef struct token { //token大小
 static Token tokens[1024] __attribute__((used)) = {};   // 改为 128
 static int nr_token __attribute__((used))  = 0;
 
-
-
 static bool make_token(char *e) {                                                //定义一个静态布尔型函数make_token，参数e是要处理的字符串，函数返回真假值（成功 / 失败）。
   int position = 0;                                                               //定义变量position并设为 0，用来记当前处理字符串到哪个位置了。
   int i;                                                                           //定义整型变量i，用来循环遍历规则。
   regmatch_t pmatch;                                                                  //定义pmatch变量，专门存正则匹配出来的位置信息。
+  //================补充===========================//
+  /* 搜了下应该是这样
+  typedef struct {
+  int rm_so;   匹配到的子串在当前片段里的起始位置（从 0 数） 如+456 的456 so就是1
+  int rm_eo;   匹配到的子串的下一个位置，也是偏移量表示 相对e+position
+  } regmatch_t; 
+  */
   nr_token = 0;                                                                           //token数量计数
   while (e[position] != '\0') {                                                               //只要当前位置的字符不是字符串结束符，就一直循环处理。
     /* Try all rules one by one. */
     for (i = 0; i < NR_REGEX; i ++) {                                                             //循环遍历所有正则规则（NR_REGEX是规则总数，最上面的一个宏），从第 0 个规则开始试。
       if (regexec(&re[i], e + position, 1, &pmatch, 0) == 0 && pmatch.rm_so == 0) {             
+        //===================================regexec解释(备忘)=====================================================//  
+        //regexec是C语言中用于正则表达式匹配的核心函数之一，
+        //属于POSIX标准的正则表达式库。它通过匹配已编译的正则表达式与目标字符串，返回匹配结果
+        //int regexec(const regex_t *preg, const char *string, size_t nmatch, regmatch_t pmatch[], int eflags);
+        //preg: 指向已通过regcomp编译的正则表达式结构体指针。就是re数组的成员
+        //string: 目标字符串，即需要匹配的文本 
+        //e+position 表示将要匹配的是 position和position后面的部分
+        //1表示往后只找一个符合串，如123，+，或者== （规则没变就是一个整体）
+        //找到后偏移量存入pmatch
+        //0 默认规则
+
+        //匹配成功返回0，失败返回非0
+
+        //======================整句翻译=============================================================//
+        //用 & re [i] 这个匹配规则去匹配 e + position 这段字符串，
+        // 让 regexec 最多存 1 个匹配结果到 & pmatch 里，按 0 对应的默认规则匹配，
+        // 若函数返回 0（匹配成功）且 pmatch.rm_so 为 0（匹配从这段开头开始），就执行大括号里的内容。
+
+        //===============为什么要两个条件都为0？===========================//
+        //比如123+456，123顺利匹配，so=0，eo=3，可以匹配上，      
+        //eo为什么等于3？ e+position此时等于0（123是开头，所以是0），到123的3的时候相对偏移量为2（123的1对应0偏移），下一个位置为3，所以eo=3
+        // 然后还剩+456，一起匹配，+被忽略，最后匹配出来456，但是so=1（因为+被忽略），所以匹配失败，换规则重来
 
         char *substr_start = e + position;           //匹配成功的子串（substr）的起始是e+position
         int substr_len = pmatch.rm_eo;               //匹配到的子串的长度是 eo-so = eo-0 = eo 你滴 明白？
@@ -104,21 +130,17 @@ static bool make_token(char *e) {                                               
 
         if (rules[i].token_type != TK_NOTYPE) {  //不是空格就存
           if(nr_token >= 1023){   
-            printf("token数组越界，保证输入小于1023个字符\n");
+            printf("token数组越界，保证输入小于128个字符\n");
             return false;
           }
-          int copy_len = substr_len;
-          // 如果是数字类型，且末尾有 'u'，则去掉它
-          if (rules[i].token_type == TK_DEC && copy_len > 0 && substr_start[copy_len-1] == 'u') {
-              copy_len--;
-          }
-          if(copy_len >= 127){
-            printf("单个字符过长，保证单字符串小于128字符\n");
+          tokens[nr_token].type = rules[i].token_type;   //设置当前token的type
+          int len_str_tobe_copied = substr_len;
+          if(len_str_tobe_copied >= 127){
+            printf("单个字符过长，保证单字符串小于32字符\n");
             return false;
           }
-          strncpy(tokens[nr_token].str, substr_start, copy_len);  // 目标数组 要复制的字符串起点，复制的数量，复习
-          tokens[nr_token].str[copy_len] = '\0';
-          tokens[nr_token].type = rules[i].token_type;
+          strncpy(tokens[nr_token].str, substr_start, len_str_tobe_copied);  // 目标数组 要复制的字符串起点，复制的数量，复习
+          tokens[nr_token].str[len_str_tobe_copied] = '\0';
 
           nr_token++; // 计数+1
           }
@@ -171,7 +193,6 @@ uint32_t apply_op(uint32_t left, char op, uint32_t right, bool *ok, bool is_unar
         printf("除以零错误\n");
         return 0;
       }
-      printf("left = %u, right = %u, result = %u\n", left, right, left/right);
       return left / right;
     default:
       *ok = false;
