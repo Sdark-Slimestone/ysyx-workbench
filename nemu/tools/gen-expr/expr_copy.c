@@ -33,8 +33,7 @@ enum {
   TK_MUL,           // 乘号 * 
   TK_DIV,           // 除号 / 
   TK_LPAREN,        // 左括号 ( 
-  TK_RPAREN,         // 右括号 ) 
-  TK_DEREF          //解引用
+  TK_RPAREN         // 右括号 ) 
 };
 
 static struct rule {
@@ -103,15 +102,21 @@ static bool make_token(char *e) {                                               
 
         position += substr_len;  //然后把position偏移量往后挪 之前匹配到的字符串的长度/
 
-        /*存入tokens数组的功能部分*/
-        if (rules[i].token_type != TK_NOTYPE) {                                                                   //不是空格就存进tokens
+        if (rules[i].token_type != TK_NOTYPE) {  //不是空格就存
+          if(nr_token >= 1023){   
+            printf("token数组越界，保证输入小于1023个字符\n");
+            return false;
+          }
           int copy_len = substr_len;
-          if(nr_token >= 1023){ printf("token数组越界，保证输入小于1023个字符\n"); return false;}
-          
-          if (rules[i].token_type == TK_DEC && copy_len > 0 && substr_start[copy_len-1] == 'u') { copy_len--;}   //如果是数字类型，且末尾有 'u'，则去掉它，实现方式：复制的长度减一
-          if(copy_len >= 127){ printf("单个字符过长，保证单字符串小于128字符\n"); return false;}
-
-          strncpy(tokens[nr_token].str, substr_start, copy_len);                                                  // 目标数组 要复制的字符串起点，复制的数量，复习
+          // 如果是数字类型，且末尾有 'u'，则去掉它
+          if (rules[i].token_type == TK_DEC && copy_len > 0 && substr_start[copy_len-1] == 'u') {
+              copy_len--;
+          }
+          if(copy_len >= 127){
+            printf("单个字符过长，保证单字符串小于128字符\n");
+            return false;
+          }
+          strncpy(tokens[nr_token].str, substr_start, copy_len);  // 目标数组 要复制的字符串起点，复制的数量，复习
           tokens[nr_token].str[copy_len] = '\0';
           tokens[nr_token].type = rules[i].token_type;
 
@@ -122,13 +127,13 @@ static bool make_token(char *e) {                                               
       }
     }
 
-    if (i == NR_REGEX) {                                                                      //所有规则匹配失败
+    if (i == NR_REGEX) {
       printf("no match at position %d\n%s\n%*.s^\n", position, e, position, "");
       return false;
     }
   }
 
-  /*重新遍历一遍tokens，区分负号和减号，上面是统一识别为减号的*/
+  //重新遍历一遍，区分负号和减号，上面是统一识别为减号的
   for (int j = 0; j < nr_token; j++) {
     if (tokens[j].type == TK_SUB) { //如果发现减号就开始判断
       if ((j == 0) ||                       //是第一个token
@@ -137,15 +142,7 @@ static bool make_token(char *e) {                                               
           (tokens[j-1].type == TK_LPAREN) || //前一位是左括号
           (tokens[j-1].type == TK_NEG)) {  //前一位是负号
         tokens[j].type = TK_NEG;  // 把减号替换为负号
-      }
-    }
-    else if (tokens[j].type == TK_MUL) { // 乘号，可能是一元解引用
-        if (j == 0 ||
-            tokens[j-1].type == TK_ADD || tokens[j-1].type == TK_SUB ||
-            tokens[j-1].type == TK_MUL || tokens[j-1].type == TK_DIV ||
-            tokens[j-1].type == TK_LPAREN ||
-            tokens[j-1].type == TK_NEG || tokens[j-1].type == TK_DEREF) {
-          tokens[j].type = TK_DEREF;
+
       }
     }
   }
@@ -158,10 +155,11 @@ static bool make_token(char *e) {                                               
 // 修改：适配uint32_t类型，支持单目负号（无符号取反：0 - right）
 uint32_t apply_op(uint32_t left, char op, uint32_t right, bool *ok, bool is_unary) {
   if(is_unary == true){
-    switch(op){
-      case '-': return 0 - right;                                   //《《《《《=================================================在这里补其他单目运算
-      default: *ok = false; return 0;
-    } 
+    if(op == '-'){
+      return 0 - right;
+    }                                                               //《《《《《=================================================在这里补其他单目运算符
+    *ok = false;
+    return 0;
   }
   switch (op) {                                                     //《《《《《《《=====================================在这里的分支里补双目和对应逻辑
     case '+': return left + right;
@@ -173,9 +171,11 @@ uint32_t apply_op(uint32_t left, char op, uint32_t right, bool *ok, bool is_unar
         printf("除以零错误\n");
         return 0;
       }
-      /*printf("left = %u, right = %u, result = %u\n", left, right, left/right); */  //要显示除法就把这里开了
+      printf("left = %u, right = %u, result = %u\n", left, right, left/right);
       return left / right;
-    default: *ok = false; return 0;
+    default:
+      *ok = false;
+      return 0;
   }
 }
 
@@ -208,7 +208,11 @@ word_t expr(char *e, bool *success) {
         errno = 0;
         unsigned long val = strtoul(tokens[i].str, NULL, 10);  //转无符号  strtoul（要被转的字符串 终止指针 进制）
 
-        if (errno == ERANGE) {*success = false; printf("数字超出范围\n"); return 0;}//检查转成功没
+        if (errno == ERANGE) {
+          *success = false;
+          printf("数字超出范围\n");
+          return 0;
+        }
 
         num_top++;
         num_stack[num_top] = (uint32_t)val; //压栈
@@ -223,19 +227,15 @@ word_t expr(char *e, bool *success) {
           bool ok = true;
           uint32_t result;
           int curr_op = op_stack[op_top];
+
           // 处理单目负号
           if (curr_op == TK_NEG) {
             if(num_top < 0){                              //数值栈内无操作数（单目运算需要1个）
               *success = false;
               return 0;
             }
-            uint32_t val = num_stack[num_top--];  //弹出数值栈
-            char op = 0;
-            switch (curr_op){
-              case TK_NEG: op = '-'; break;
-              default: op = 0;
-            }
-            result = apply_op(0, op, val, &ok, true); 
+            uint32_t val = num_stack[num_top--];
+            result = apply_op(0, '-', val, &ok, true);
           }
           // 处理双目运算符
           else {
@@ -277,18 +277,18 @@ word_t expr(char *e, bool *success) {
           int cur_pri = priority(type);
           int should_pop = 0;
           if(type == TK_NEG){
-          //单目右结合，单拎出来                                  <<<<<<<<<<<======   解引用也是这样,要加解引用就要在这里动一下
-            if(stack_pri > cur_pri){ //不能等于是因为 假设 - - 5，你第一个负号进入了，第二个被检测出来就要弹出，但这时候操作数还没进去，寄
+          //单目右结合，单拎出来
+            if(stack_pri > cur_pri){
               should_pop = 1;
             }
-          } 
-          else {
+          } else {
             if(stack_pri >= cur_pri){
               should_pop = 1;
             }
           }
           if(should_pop == 0){
-            break;         
+            break;
+          
           }
 
           bool ok = true;
@@ -296,18 +296,13 @@ word_t expr(char *e, bool *success) {
           int curr_op = op_stack[op_top];
 
           // 处理单目负号
-          if (curr_op == TK_NEG) {                            //<<<<<<<<<<<<=====================解引用要加一下
+          if (curr_op == TK_NEG) {
             if(num_top < 0){                              //数值栈内无操作数（单目运算需要1个）
               *success = false;
               return 0;
             }
             uint32_t val = num_stack[num_top--];
-            char op = 0;
-            switch (curr_op){
-              case TK_NEG: op = '-'; break;
-              default: op = 0;
-            }
-            result = apply_op(0, op, val, &ok, true);
+            result = apply_op(0, '-', val, &ok, true);
           }
           // 处理双目运算符
           else {
@@ -358,12 +353,7 @@ word_t expr(char *e, bool *success) {
           return 0;
         }
         uint32_t val = num_stack[num_top--];
-        char op = 0;
-        switch(curr_op){
-          case TK_NEG: op = '-'; break;
-          default: op = 0;
-        }
-        result = apply_op(0, op, val, &ok, true);
+        result = apply_op(0, '-', val, &ok, true);
       }
       // 处理双目运算符
       else {
@@ -392,8 +382,8 @@ word_t expr(char *e, bool *success) {
       num_stack[num_top] = result;
       op_top--;
     }
-
     //此时符号栈处理完了，如果数字栈没空那就是出错了
+
     if (num_top != 0) {
       *success = false;
       return 0; 
