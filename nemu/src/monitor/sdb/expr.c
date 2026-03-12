@@ -19,10 +19,17 @@
  * Type 'man regex' for more information about POSIX regex functions.
  */
 #include <regex.h>
+#include <cpu/cpu.h>
+#include <readline/readline.h>
+#include <readline/history.h>
+#include <memory/paddr.h>   
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include "memory/paddr.h" 
+#include "sdb.h"
+#include "watchpoint.h"
+#include "expr.h"
+
 
 enum {
   TK_NOTYPE = 256,  // 

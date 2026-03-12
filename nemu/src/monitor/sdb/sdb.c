@@ -19,6 +19,9 @@
 #include <readline/history.h>
 #include <memory/paddr.h>   //内存操作接口
 #include "sdb.h"
+#include "watchpoint.h"
+#include "expr.h"
+#include <isa.h>
 
 
 static int is_batch_mode = false;
@@ -70,7 +73,7 @@ static int cmd_info(char *args) {
         isa_reg_display();
         return 0;
       } else if(arg == 'w'){
-        printf("前面的区域以后再来探索吧（\n");
+        info_watchpoints(); 
         return 0;
       } else{
         printf("未知命令，请输入r或者w\n");
@@ -78,6 +81,28 @@ static int cmd_info(char *args) {
       }
     }
   }
+}
+
+static int cmd_w(char *args) {
+    if (args == NULL) {
+        printf("请指定要监视的表达式\n");
+        return -1;
+    }
+    WP *wp = new_wp(args);  // 内部已处理表达式求值和资源分配，失败时 assert 退出
+    printf("已设置监视点 %d: %s\n", wp->NO, wp->exp);
+    return 0;
+}
+
+
+static int cmd_d(char *args) {
+    char *arg = strtok(NULL, " ");
+    if (arg == NULL) {
+        printf("缺少监视点编号\n");
+        return -1;
+    }
+    int no = atoi(arg);
+    delete_watchpoint(no);
+    return 0;
 }
 
 static int cmd_si(char *args) {
@@ -125,6 +150,22 @@ static int cmd_x(char *args) {
   return 0;
 }
 
+static int cmd_p(char *args) {
+    if (args == NULL) {
+        printf("请指定要求值的表达式\n");
+        return 0;
+    }
+    bool success;
+    word_t result = expr(args, &success);
+    if (success) {
+        printf("结果为: %u (0x%x)\n", result, result);
+    } else {
+        printf("表达式求值失败\n");
+    }
+    return 0;
+}
+
+
 static struct {
   const char *name;
   const char *description;
@@ -136,6 +177,9 @@ static struct {
   { "info", "打印信息，r是寄存器值，w是监视点信息", cmd_info },  //新增info命令
   { "x", "扫描内存信息", cmd_x },  //新增info命令
   { "q", "Exit NEMU", cmd_q },
+  { "d", "删除对应的监视点 d N", cmd_d },
+  { "w", "设置监视点 ", cmd_w },
+  { "p", "表达式求值 exp", cmd_p },
 
   /* TODO: Add more commands */
 
