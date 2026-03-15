@@ -39,56 +39,57 @@ void init_wp_pool() {
 
 /* TODO: Implement the functionality of watchpoint */
 
-WP* new_wp(const char* exp){
-  if(exp == NULL){
-    printf("表达式为空\n");
-    assert(0);
+WP* new_wp(const char* exp) {
+  //参数检查
+  if (exp == NULL) {
+    printf("错误：表达式为空\n");
+    return NULL;
   }
 
-  /*表达式求值*/
-  //溢出判断在expr函数里
-  uint32_t val;
+  //检查空闲节点
+  if (free_ == NULL) {
+    printf("错误：无空闲监视点，请先删除一些\n");
+    return NULL;
+  }
+
+  //检查表达式长度
+  size_t exp_len = strlen(exp);
+  if (exp_len >= sizeof(wp_pool[0].exp)) {
+    printf("错误：表达式过长（最大 %zu 字符）\n", sizeof(wp_pool[0].exp) - 1);
+    return NULL;
+  }
+
+  //表达式求值
   bool success = false;
-  val = (uint32_t)expr((char *)exp, &success);
-  if(success == false){
-    printf("表达式求值失败，表达式=%s\n", exp);
-    assert(0);
+  uint32_t val = (uint32_t)expr((char *)exp, &success);
+  if (!success) {
+    printf("错误：表达式求值失败，表达式 = \"%s\"\n", exp);
+    return NULL;
   }
-  /*取节点*/
-  if(free_ == NULL){
-    printf("无free节点\n");
-    assert(0);
-  } 
-  WP *first_next = free_->next; //先找个变量把取出节点的next存起来
-  free_->next = NULL;                            //取出节点的next悬空
-  WP *gained_watchpoint = free_; //找个指针指着取出来的节点
-  free_ = first_next;                           //让free指着被取出节点的下一个节点
 
-  /*写节点*/
-  gained_watchpoint->result = val;
-  gained_watchpoint->result_en = true;
-  strncpy(gained_watchpoint->exp, exp, sizeof(gained_watchpoint->exp) - 1);
-  gained_watchpoint->exp[sizeof(gained_watchpoint->exp) - 1] = '\0';
-  size_t len= strlen(exp);
-  size_t len1 = strlen(gained_watchpoint->exp) ;
-  if(len > len1){
-    printf("复制表达式失败\n");
-    assert(0);
+  //从空闲链表取下节点，此时所有失败条件已排除
+  WP *gained = free_;
+  free_ = free_->next;      // 更新空闲链表头
+  gained->next = NULL;      // 断开与原链表的联系
+
+  //初始化节点内容
+  gained->result = val;
+  gained->result_en = true;
+  strncpy(gained->exp, exp, sizeof(gained->exp) - 1);
+  gained->exp[sizeof(gained->exp) - 1] = '\0';
+
+  //将节点插入head链表
+  if (head == NULL) {
+    head = gained;
+  } else {
+    WP *tail = head;
+    while (tail->next != NULL) {
+        tail = tail->next;
+    }
+    tail->next = gained;
   }
-  
-  /*放节点*/
-  //第一个节点
-  if(head == NULL){
-    head = gained_watchpoint;
-  }
-  else {
-    WP *check_next = head;
-    while(check_next->next != NULL){
-      check_next = check_next->next;
-    }                                                   //过完这里，checknext就是最后一个节点的指针了
-    check_next->next = gained_watchpoint;            //接上去
-  }
-  return gained_watchpoint;
+
+  return gained;
 }
 
 

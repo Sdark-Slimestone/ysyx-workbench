@@ -71,15 +71,15 @@ int main(int argc, char *argv[]) {
       word_t result = expr(expr_str, &success); // 调用函数计算
 
       if (success) {
-          if (result == expected) {
-              passed++;
-          } else {
-              printf("FAIL: %s => expected %u, got %u\n", expr_str, expected, (unsigned)result);
-              printf("===========================================================\n");
-          }
-      } else {
-          printf("非法表达式: %s => expected %u\n", expr_str, expected);
+        if (result == expected) {
+          passed++;
+        } else {
+          printf("FAIL: %s => expected %u, got %u\n", expr_str, expected, (unsigned)result);
           printf("===========================================================\n");
+        }
+      } else {
+        printf("非法表达式: %s => expected %u\n", expr_str, expected);
+        printf("===========================================================\n");
       }
     }
     if (fp != stdin) fclose(fp); // 如果打开了文件，就关闭

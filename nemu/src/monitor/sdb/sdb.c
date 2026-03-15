@@ -85,10 +85,14 @@ static int cmd_info(char *args) {
 
 static int cmd_w(char *args) {
     if (args == NULL) {
-        printf("请指定要监视的表达式\n");
-        return -1;
+      printf("请指定要监视的表达式\n");
+      return 0;
     }
-    WP *wp = new_wp(args);  // 内部已处理表达式求值和资源分配，失败时 assert 退出
+    WP *wp = new_wp(args);  // 内部已处理表达式求值和资源分配，失败时
+    if (wp == NULL){
+      printf("设置节点失败\n");
+      return 0;
+    }
     printf("已设置监视点 %d: %s\n", wp->NO, wp->exp);
     return 0;
 }
@@ -97,8 +101,8 @@ static int cmd_w(char *args) {
 static int cmd_d(char *args) {
     char *arg = strtok(NULL, " ");
     if (arg == NULL) {
-        printf("缺少监视点编号\n");
-        return -1;
+      printf("缺少监视点编号\n");
+      return 0;
     }
     int no = atoi(arg);
     delete_watchpoint(no);
@@ -151,18 +155,18 @@ static int cmd_x(char *args) {
 }
 
 static int cmd_p(char *args) {
-    if (args == NULL) {
-        printf("请指定要求值的表达式\n");
-        return 0;
-    }
-    bool success;
-    word_t result = expr(args, &success);
-    if (success) {
-        printf("结果为: %u (0x%x)\n", result, result);
-    } else {
-        printf("表达式求值失败\n");
-    }
+  if (args == NULL) {
+    printf("请指定要求值的表达式\n");
     return 0;
+  }
+  bool success;
+  word_t result = expr(args, &success);
+  if (success) {
+    printf("结果为: %u (0x%x)\n", result, result);
+  } else {
+    printf("表达式求值失败\n");
+  }
+  return 0;
 }
 
 
