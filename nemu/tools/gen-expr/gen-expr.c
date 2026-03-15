@@ -33,26 +33,41 @@ static char *code_format =
 "  return 0; "
 "}";
 
-//辅助函数：生成随机无符号数
+//辅助函数：生成随机无符号数（支持十进制带u和十六进制不带后缀）
 static void gen_num() {
-  // 生成一个32位的随机无符号整数
-  unsigned val = ((unsigned)rand() << 16) ^ (unsigned)rand(); //当作max是32000多少来着
-  char tmp[20];                        // 足够存放10位数字 + 'u' + '\0'
-  sprintf(tmp, "%u", val);              // 将数值转为十进制字符串
-  int len = strlen(tmp);
-  tmp[len] = 'u';                       // 添加 'u' 后缀，强制为无符号常量
-  tmp[len + 1] = '\0';                   
-  strcat(buf, tmp);                     // 追加到全局缓冲区
+  // 随机选择十进制或十六进制
+  if (rand() % 2 == 0) {
+    // 生成十进制带u
+    uint32_t val = (uint32_t)(((uint32_t)rand()) << (rand() % 16));
+    char tmp[20];
+    sprintf(tmp, "%u", val);
+    int len = strlen(tmp);
+    tmp[len] = 'u';
+    tmp[len + 1] = '\0';
+    strcat(buf, tmp);
+  } else {
+    // 生成十六进制带u后缀
+    unsigned val = (uint32_t)(((uint32_t)rand()) << (rand() % 16));
+    char tmp[20];
+    sprintf(tmp, "0x%X", val);   // 例如 0x1A3F
+    int len = strlen(tmp);
+    tmp[len] = 'u';
+    tmp[len + 1] = '\0';
+    strcat(buf, tmp);
+  }
 }
 
-//辅助函数：随机生成运算符
-static char gen_rand_op() {
-  int op = rand() % 4;                   // 0,1,2,3
+//辅助函数：随机生成运算符字符串（支持 + - * / &&）
+static const char* gen_rand_op_str() {                 // 拓展符号就只改这里
+  int op = rand() % 7;   // 0~4 对应五种运算符
   switch (op) {
-    case 0: return '+';
-    case 1: return '-';
-    case 2: return '*';
-    default: return '/';
+    case 0: return "+";
+    case 1: return "-";
+    case 2: return "*";
+    case 3: return "/";
+    case 4: return "==";
+    case 5: return "!=";
+    default: return "&&";
   }
 }
 
@@ -114,12 +129,12 @@ static void gen_expr(int depth) {
     default: // 生成二元运算: expr op expr
       gen_expr(depth + 1);   // 左操作数
       gen_space();
-      char op = gen_rand_op();
-      // 避免出现连续两个减号--，看起来似乎多余，但留着也没坏处吧（（（
-      if (buf[0] != '\0' && buf[strlen(buf)-1] == '-' && op == '-') {
+      const char* op = gen_rand_op_str();
+      // 避免出现连续两个减号--（仅当运算符是单个'-'时检查）
+      if (strcmp(op, "-") == 0 && buf[0] != '\0' && buf[strlen(buf)-1] == '-') {
         strcat(buf, " ");    // 插入一个空格分隔
       }
-      gen(op);               // 添加运算符
+      strcat(buf, op);       // 添加运算符字符串
       gen_space();
       gen_expr(depth + 1);   // 右操作数
       break;

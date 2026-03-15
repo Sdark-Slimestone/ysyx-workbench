@@ -21,7 +21,7 @@
 #include "watchpoint.h"
 
 #define NR_WP 32
-
+//是个双单向链表结构，需要监视点的时候就会从一个free_链表中取一个节点下来，放到另一个链表head上，反之亦然
 /*限制作用域防止冲突，不用手动分配和释放*/
 static WP wp_pool[NR_WP] = {};          
 static WP *head = NULL, *free_ = NULL;  //head是正在使用的链表。初始化时是空的，free是空链表，初始化一堆空元素
@@ -100,6 +100,7 @@ void free_wp(WP *wp){
   /*从head里删链表*/
   if(head == wp){                              //要删除的是第一个节点
     head = wp->next;
+    wp->next = NULL;
   }
   else {
     WP *check_next = head;
@@ -152,8 +153,8 @@ bool check_watchpoints() {
     bool success;
     uint32_t new_val = expr(wp->exp, &success);
     if (!success) {
-        // 理论上不会发生，因为创建时已验证表达式有效
-        printf("警告：监视点 %d 表达式求值失败\n", wp->NO);
+        //如果表达式失败
+        printf("警告：监视点 %d 表达式求值失败，后续不会触发监视点\n", wp->NO);
         wp = wp->next;
         continue;
     }

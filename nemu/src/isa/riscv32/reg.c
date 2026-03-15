@@ -41,6 +41,7 @@ word_t isa_reg_str2val(const char *s, bool *success) {
       return gpr(i);
     }
   }
+  printf("寄存器不存在\n");
   *success = false;
   return 0;
 }

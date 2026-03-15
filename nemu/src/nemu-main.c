@@ -63,21 +63,25 @@ int main(int argc, char *argv[]) {
       char expr_str[65536];  // 存放从文件里读到的表达式
       // 从这一行中解析出 "结果 表达式"，例如 "42 1+2"
       // %u 读无符号整数，%[^\n] 读剩下的所有字符直到换行
-      if (sscanf(line, "%u,%[^\n]", &expected, expr_str) != 2) { //这里是ai写了然后搜索的%[^\n]的意思，现在知道了
+      if (sscanf(line, "%u,%[^\n]", &expected, expr_str) != 2) { 
         continue; // 如果格式不对，跳过这一行
       }
       total++; // 总行数加1
       bool success; // 用来接收expr函数是否成功
       word_t result = expr(expr_str, &success); // 调用函数计算
 
-      if (success && (result == expected)) {
-        passed++; // 正确就加1
+      if (success) {
+          if (result == expected) {
+              passed++;
+          } else {
+              printf("FAIL: %s => expected %u, got %u\n", expr_str, expected, (unsigned)result);
+              printf("===========================================================\n");
+          }
       } else {
-        // 错误就打印出来
-        printf("FAIL: %s => expected %u, got %u\n", expr_str, expected, (unsigned)result);
+          printf("非法表达式: %s => expected %u\n", expr_str, expected);
+          printf("===========================================================\n");
       }
     }
-
     if (fp != stdin) fclose(fp); // 如果打开了文件，就关闭
     printf("Total: %d, Passed: %d, Failed: %d\n", total, passed, total - passed);
     return 0; // 测试完成，直接退出程序，不再进入调试器
