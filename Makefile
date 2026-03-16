@@ -49,4 +49,4 @@ _default:
 .PHONY: count
 count:
 	@echo " NEMU .h/.c 文件行数统计 "    
-	find $(NEMU_HOME) -name "*.h" -o -name "*.c" | xargs wc -l
+	find $(NEMU_HOME) -name "*.h" -o -name "*.c" -exec grep . {} \; | wc -l
