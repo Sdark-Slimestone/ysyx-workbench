@@ -55,6 +55,7 @@ static struct rule {
   int token_type;
 } rules[] = {
   // 多字符运算符和特殊 token 优先匹配
+  {"\\(unsigned\\)", TK_NOTYPE},      // 忽略类型转换标记  <-- 新增
   {"0[xX][0-9a-fA-F]+u", TK_HEX},      // 带u后缀的十六进制数
   {"0[xX][0-9a-fA-F]+", TK_HEX},      // 十六进制数
   {"[0-9]+u", TK_DEC},                 // 带u后缀的十进制数
@@ -65,7 +66,7 @@ static struct rule {
   {"&&", TK_AND},                       // 逻辑与
   {"\\+", TK_ADD},                       // 加号
   {"\\-", TK_SUB},                       // 减号
-  {"\\*", TK_MUL},                       // 乘号（也可能是解引用，后处理）
+  {"\\*", TK_MUL},                       // 乘号（也可能是解引用，后面处理）
   {"\\/", TK_DIV},                       // 除号
   {"\\(", TK_LPAREN},                     // 左括号
   {"\\)", TK_RPAREN},                     // 右括号
@@ -140,7 +141,7 @@ static bool make_token(char *e) {
           tokens[nr_token].type = rules[i].token_type;
 
           nr_token++; // 计数+1
-          }
+        }
 
         break;
       }
@@ -173,194 +174,194 @@ static bool make_token(char *e) {
             tokens[j-1].type == TK_LPAREN ||
             tokens[j-1].type == TK_NEG || tokens[j-1].type == TK_DEREF) {
           tokens[j].type = TK_DEREF;   // 改为解引用
-      }
+        }
     }
   }
   return true;
 }
 
 static word_t eval(int l, int r, bool *success) {
-    if (l > r) {
+  if (l > r) {
+    *success = false;
+    return 0;
+  }
+
+  // 单个 token
+  if (l == r) {
+    Token *t = &tokens[l];
+    switch (t->type) {
+      case TK_DEC: {
+        char *endptr;
+        word_t val = strtoul(t->str, &endptr, 10);
+        if (*endptr != '\0') {
+          *success = false;
+          return 0;
+        }
+        return val;
+      }
+      case TK_HEX: {
+        char *endptr;
+        word_t val = strtoul(t->str, &endptr, 16);
+        if (*endptr != '\0') {
+          *success = false;
+          return 0;
+        }
+        return val;
+      }
+      case TK_REG: {
+        bool reg_success = true;
+        word_t val = isa_reg_str2val(t->str, &reg_success);
+        if (!reg_success) {
+          *success = false;
+          return 0;
+        }
+        return val;
+      }
+      default:
         *success = false;
         return 0;
     }
+  }
 
-    // 单个 token
-    if (l == r) {
-        Token *t = &tokens[l];
-        switch (t->type) {
-            case TK_DEC: {
-                char *endptr;
-                word_t val = strtoul(t->str, &endptr, 10);
-                if (*endptr != '\0') {
-                    *success = false;
-                    return 0;
-                }
-                return val;
-            }
-            case TK_HEX: {
-                char *endptr;
-                word_t val = strtoul(t->str, &endptr, 16);
-                if (*endptr != '\0') {
-                    *success = false;
-                    return 0;
-                }
-                return val;
-            }
-            case TK_REG: {
-                bool reg_success = true;
-                word_t val = isa_reg_str2val(t->str, &reg_success);
-                if (!reg_success) {
-                    *success = false;
-                    return 0;
-                }
-                return val;
-            }
-            default:
-                *success = false;
-                return 0;
-        }
+  // 检查是否被一对括号完全包裹
+  if (tokens[l].type == TK_LPAREN && tokens[r].type == TK_RPAREN) {
+    int level = 0;
+    int i;
+    for (i = l; i <= r; i++) {
+      if (tokens[i].type == TK_LPAREN) level++;
+      else if (tokens[i].type == TK_RPAREN) level--;
+      if (level == 0 && i < r) break; // 提前闭合，不是完全包裹
+      if (i == r && level == 0) {
+        return eval(l + 1, r - 1, success); // 去掉外层括号
+      }
     }
+  }
 
-    // 检查是否被一对括号完全包裹
-    if (tokens[l].type == TK_LPAREN && tokens[r].type == TK_RPAREN) {
-        int level = 0;
-        int i;
-        for (i = l; i <= r; i++) {
-            if (tokens[i].type == TK_LPAREN) level++;
-            else if (tokens[i].type == TK_RPAREN) level--;
-            if (level == 0 && i < r) break; // 提前闭合，不是完全包裹
-            if (i == r && level == 0) {
-                return eval(l + 1, r - 1, success); // 去掉外层括号
-            }
-        }
-    }
+  // 查找不在括号内的最低优先级二元运算符
+  int op_pos = -1;
+  int op_type = -1;
 
-    // 查找不在括号内的最低优先级二元运算符
-    int op_pos = -1;
-    int op_type = -1;
+  int prio_groups[][4] = {
+    {TK_AND, 0},
+    {TK_EQ, TK_NEQ, 0},
+    {TK_ADD, TK_SUB, 0},
+    {TK_MUL, TK_DIV, 0},
+  };
+  int group_count = sizeof(prio_groups) / sizeof(prio_groups[0]);
 
-    int prio_groups[][4] = {
-        {TK_AND, 0},
-        {TK_EQ, TK_NEQ, 0},
-        {TK_ADD, TK_SUB, 0},
-        {TK_MUL, TK_DIV, 0},
-    };
-    int group_count = sizeof(prio_groups) / sizeof(prio_groups[0]);
-
-    for (int g = 0; g < group_count; g++) {
-        int level = 0;
-        int last_op = -1;
-        //再tokens中找括号外的算符
-        for (int i = l; i <= r; i++) {
-            if (tokens[i].type == TK_LPAREN) {
-                level++;
-            } else if (tokens[i].type == TK_RPAREN) {
-                level--;
-            } else if (level == 0) {
-                //找当前再tokens中找到的算符属于哪个优先级组，找到的话就返回算符的位置，找不到，那肯定就是单目
-                for (int k = 0; prio_groups[g][k] != 0; k++) {
-                    if (tokens[i].type == prio_groups[g][k]) {
-                        last_op = i;
-                        break;
-                    }
-                }
-            }
-        }
-        if (last_op != -1) {
-            op_pos = last_op;
-            op_type = tokens[last_op].type;
+  for (int g = 0; g < group_count; g++) {
+    int level = 0;
+    int last_op = -1;
+    //再tokens中找括号外的算符
+    for (int i = l; i <= r; i++) {
+      if (tokens[i].type == TK_LPAREN) {
+        level++;
+      } else if (tokens[i].type == TK_RPAREN) {
+        level--;
+      } else if (level == 0) {
+        //找当前再tokens中找到的算符属于哪个优先级组，找到的话就返回算符的位置，找不到，那肯定就是单目
+        for (int k = 0; prio_groups[g][k] != 0; k++) {
+          if (tokens[i].type == prio_groups[g][k]) {
+            last_op = i;
             break;
+          }
         }
+      }
     }
+    if (last_op != -1) {
+      op_pos = last_op;
+      op_type = tokens[last_op].type;
+      break;
+    }
+  }
 
-    if (op_pos != -1) {
-        word_t left_val = eval(l, op_pos - 1, success);  //先算左值，再算右值 再算左右运算后的值
+  if (op_pos != -1) {
+    word_t left_val = eval(l, op_pos - 1, success);  //先算左值，再算右值 再算左右运算后的值
+    if (!*success) return 0;
+
+    switch (op_type) {
+      case TK_ADD: {
+        word_t right_val = eval(op_pos + 1, r, success);
         if (!*success) return 0;
-
-        switch (op_type) {
-            case TK_ADD: {
-                word_t right_val = eval(op_pos + 1, r, success);
-                if (!*success) return 0;
-                word_t result = left_val + right_val;
-                return result;
-            }
-            case TK_SUB: {
-                word_t right_val = eval(op_pos + 1, r, success);
-                if (!*success) return 0;
-                word_t result = left_val - right_val;
-                return result;
-            }
-            case TK_MUL: {
-                word_t right_val = eval(op_pos + 1, r, success);
-                if (!*success) return 0;
-                word_t result = left_val * right_val;
-                return result;
-            }
-            case TK_DIV: {
-                word_t right_val = eval(op_pos + 1, r, success);
-                if (!*success) return 0;
-                if (right_val == 0) {
-                    printf("除法错误：除数为零\n");
-                    *success = false;
-                    return 0;
-                }
-                word_t result = left_val / right_val;
-                return result;
-            }
-            case TK_EQ: {
-                word_t right_val = eval(op_pos + 1, r, success);
-                if (!*success) return 0;
-                word_t result = (left_val == right_val);
-                return result;
-            }
-            case TK_NEQ: {
-                word_t right_val = eval(op_pos + 1, r, success);
-                if (!*success) return 0;
-                word_t result = (left_val != right_val);
-                return result;
-            }
-            case TK_AND: {
-                if (left_val == 0) {
-                    return 0;
-                }
-                word_t right_val = eval(op_pos + 1, r, success);
-                if (!*success) return 0;
-                word_t result = (right_val != 0) ? 1 : 0;
-                return result;
-            }
-            default:
-                *success = false;
-                return 0;
-        }
-    }
-
-    // 处理一元运算符（负号、解引用）
-    if (tokens[l].type == TK_NEG || tokens[l].type == TK_DEREF) {
-        word_t sub_val = eval(l + 1, r, success);
+        word_t result = left_val + right_val;
+        return result;
+      }
+      case TK_SUB: {
+        word_t right_val = eval(op_pos + 1, r, success);
         if (!*success) return 0;
-        if (tokens[l].type == TK_NEG) {
-            word_t result = 0 - sub_val;
-            return result;
-        } else { // TK_DEREF
-            if((sub_val % 4) != 0){
-              printf("非法解引用, 但也不是不能解（\n");
-            }
-            word_t result = paddr_read(sub_val, 4);
-            return result;
+        word_t result = left_val - right_val;
+        return result;
+      }
+      case TK_MUL: {
+        word_t right_val = eval(op_pos + 1, r, success);
+        if (!*success) return 0;
+        word_t result = left_val * right_val;
+        return result;
+      }
+      case TK_DIV: {
+        word_t right_val = eval(op_pos + 1, r, success);
+        if (!*success) return 0;
+        if (right_val == 0) {
+          printf("除法错误：除数为零\n");
+          *success = false;
+          return 0;
         }
+        word_t result = left_val / right_val;
+        return result;
+      }
+      case TK_EQ: {
+        word_t right_val = eval(op_pos + 1, r, success);
+        if (!*success) return 0;
+        word_t result = (left_val == right_val);
+        return result;
+      }
+      case TK_NEQ: {
+        word_t right_val = eval(op_pos + 1, r, success);
+        if (!*success) return 0;
+        word_t result = (left_val != right_val);
+        return result;
+      }
+      case TK_AND: {
+        if (left_val == 0) {
+          return 0;
+        }
+        word_t right_val = eval(op_pos + 1, r, success);
+        if (!*success) return 0;
+        word_t result = (right_val != 0) ? 1 : 0;
+        return result;
+      }
+      default:
+        *success = false;
+        return 0;
     }
+  }
 
-    *success = false;
-    return 0;
+  // 处理一元运算符（负号、解引用）
+  if (tokens[l].type == TK_NEG || tokens[l].type == TK_DEREF) {
+    word_t sub_val = eval(l + 1, r, success);
+    if (!*success) return 0;
+    if (tokens[l].type == TK_NEG) {
+      word_t result = 0 - sub_val;
+      return result;
+    } else { // TK_DEREF
+      if((sub_val % 4) != 0){
+        printf("非法解引用, 但也不是不能解（\n");
+      }
+      word_t result = paddr_read(sub_val, 4);
+      return result;
+    }
+  }
+
+  *success = false;
+  return 0;
 }
 
 word_t expr(char *e, bool *success) {
-    if (!make_token(e)) {
-        *success = false;
-        return 0;
-    }
+  if (!make_token(e)) {
+    *success = false;
+    return 0;
+  }
 
-    *success = true;
-    return eval(0, nr_token - 1, success);
+  *success = true;
+  return eval(0, nr_token - 1, success);
 }

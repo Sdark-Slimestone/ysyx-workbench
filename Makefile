@@ -42,3 +42,11 @@ _default:
 	@echo "Please run 'make' under subprojects."
 
 .PHONY: .git_commit .clean_index _default
+
+
+# nemu 代码行数统计
+# 第一条：find命令，找。h或者。c文件，找到后传给wc -l命令
+.PHONY: count
+count:
+	@echo " NEMU .h/.c 文件行数统计 "    
+	find $(NEMU_HOME) -name "*.h" -o -name "*.c" | xargs wc -l
