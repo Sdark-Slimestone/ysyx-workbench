@@ -1,7 +1,7 @@
 #ifndef __EXPR_H__
 #define __EXPR_H__
 
-#include <common.h>   // 包含 word_t, bool 等类型定义
+#include <common.h>   
 #include <regex.h>
 #include <cpu/cpu.h>
 #include <readline/readline.h>

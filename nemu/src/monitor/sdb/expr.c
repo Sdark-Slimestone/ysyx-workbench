@@ -114,7 +114,7 @@ static bool make_token(char *e) {
       if (regexec(&re[i], e + position, 1, &pmatch, 0) == 0 && pmatch.rm_so == 0) {             
 
         char *substr_start = e + position;           //匹配成功的子串（substr）的起始是e+position
-        int substr_len = pmatch.rm_eo;               //匹配到的子串的长度是 eo-so = eo-0 = eo
+        int substr_len = pmatch.rm_eo;               //匹配到的子串的长度是 eo-so 
 
         position += substr_len;  //然后把position偏移量往后挪 之前匹配到的字符串的长度/
 
@@ -123,7 +123,7 @@ static bool make_token(char *e) {
           int copy_len = substr_len;
           if(nr_token >= 1023){ printf("token数组越界，保证输入小于1023个字符\n"); return false;}
           
-          // 特殊处理：数字去掉末尾的 'u'，寄存器去掉开头的 '$'
+          //数字去掉末尾的 'u'，寄存器去掉开头的 '$'
           if (rules[i].token_type == TK_DEC && copy_len > 0 && substr_start[copy_len-1] == 'u') {
             copy_len--;   // 去掉 u
           }else if (rules[i].token_type == TK_HEX && copy_len > 0 && substr_start[copy_len-1] == 'u') {
@@ -136,7 +136,7 @@ static bool make_token(char *e) {
 
           if(copy_len >= 127){ printf("单个字符过长，保证单字符串小于128字符\n"); return false;}
 
-          strncpy(tokens[nr_token].str, substr_start, copy_len);                                                  // 目标数组 要复制的字符串起点，复制的数量
+          strncpy(tokens[nr_token].str, substr_start, copy_len);                 
           tokens[nr_token].str[copy_len] = '\0';
           tokens[nr_token].type = rules[i].token_type;
 
@@ -159,7 +159,7 @@ static bool make_token(char *e) {
           (tokens[j-1].type == TK_ADD || tokens[j-1].type == TK_SUB || 
           tokens[j-1].type == TK_MUL || tokens[j-1].type == TK_DIV ||
           tokens[j-1].type == TK_EQ || tokens[j-1].type == TK_NEQ ||
-          tokens[j-1].type == TK_AND) || // 新增逻辑运算符
+          tokens[j-1].type == TK_AND) || 
           (tokens[j-1].type == TK_LPAREN) || //前一位是左括号
           (tokens[j-1].type == TK_NEG)) {  //前一位是负号
         tokens[j].type = TK_NEG;  // 把减号替换为负号
@@ -170,7 +170,7 @@ static bool make_token(char *e) {
             tokens[j-1].type == TK_ADD || tokens[j-1].type == TK_SUB ||
             tokens[j-1].type == TK_MUL || tokens[j-1].type == TK_DIV ||
             tokens[j-1].type == TK_EQ || tokens[j-1].type == TK_NEQ ||
-            tokens[j-1].type == TK_AND || // 新增逻辑运算符
+            tokens[j-1].type == TK_AND || 
             tokens[j-1].type == TK_LPAREN ||
             tokens[j-1].type == TK_NEG || tokens[j-1].type == TK_DEREF) {
           tokens[j].type = TK_DEREF;   // 改为解引用

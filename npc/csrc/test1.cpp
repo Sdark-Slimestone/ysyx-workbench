@@ -39,7 +39,7 @@ int main(int argc, char* argv[]) {
     wave_trace->close();  // 关闭波形文件
     delete wave_trace;    // 释放波形跟踪器内存
 
-    // 补全：释放资源，结束仿真
+    // 释放资源，结束仿真
     delete top;
     printf("\n所有测试通过！共验证100次随机输入\n");
     return 0;

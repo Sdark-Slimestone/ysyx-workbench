@@ -164,25 +164,25 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < loop; i++) {
         gen_rand_expr();
-        sprintf(code_buf, code_format, buf);
+        sprintf(code_buf, code_format, buf); //把表达式写入模板
 
-        FILE *fp = fopen("/tmp/.code.c", "w");
+        FILE *fp = fopen("/tmp/.code.c", "w");  //打开一个临时文件，把完整的代码写进去
         assert(fp != NULL);
         fputs(code_buf, fp);
         fclose(fp);
 
         char cmd[256];
-        snprintf(cmd, sizeof(cmd), "gcc /tmp/.code.c -o /tmp/.expr 2>&1");  //检查错误
-        FILE *compile_fp = popen(cmd, "r");
-        if (compile_fp == NULL) {  
+        snprintf(cmd, sizeof(cmd), "gcc /tmp/.code.c -o /tmp/.expr 2>&1");  //把命令存入cmd数组
+        FILE *compile_fp = popen(cmd, "r");                                 //启动子进程，输出到屏幕的同时结果写入管道
+        if (compile_fp == NULL) {                                           //启动子进程失败就跳过
             continue;
         }
         char output[1024] = {0};
-        size_t n = fread(output, 1, sizeof(output)-1, compile_fp);
+        size_t n = fread(output, 1, sizeof(output)-1, compile_fp);          //把管道里的输出读出来
         (void)n;
-        int ret = pclose(compile_fp);
+        int ret = pclose(compile_fp);                                          //关闭管道
         if (ret != 0 || strstr(output, "division by zero") != NULL) {  //检查除以0警告
-            continue;
+            continue;                                                   //有除以0就跳过
         }
 
         fp = popen("/tmp/.expr", "r");

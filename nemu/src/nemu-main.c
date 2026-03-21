@@ -63,7 +63,7 @@ int main(int argc, char *argv[]) {
       char expr_str[65536];  // 存放从文件里读到的表达式
       // 从这一行中解析出 "结果 表达式"，例如 "42 1+2"
       // %u 读无符号整数，%[^\n] 读剩下的所有字符直到换行
-      if (sscanf(line, "%u,%[^\n]", &expected, expr_str) != 2) { 
+      if (sscanf(line, "%u %[^\n]", &expected, expr_str) != 2) { 
         continue; // 如果格式不对，跳过这一行
       }
       total++; // 总行数加1
