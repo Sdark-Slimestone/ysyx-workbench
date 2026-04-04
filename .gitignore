@@ -13,3 +13,4 @@
 /fceux-am
 !/minirv3/*
 /nvboard
+!auto-cpu-tests.py
