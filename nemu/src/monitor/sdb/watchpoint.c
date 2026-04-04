@@ -143,7 +143,7 @@ void free_wp(WP *wp){
 bool check_watchpoints() {
 
   if (head == NULL) {
-      printf("当前没有监视点\n");
+      //printf("当前没有监视点\n");
       return false;
   }
   
