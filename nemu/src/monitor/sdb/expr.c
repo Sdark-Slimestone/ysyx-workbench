@@ -166,15 +166,15 @@ static bool make_token(char *e) {
       }
     }
     else if (tokens[j].type == TK_MUL) { // 乘号，可能是一元解引用
-        if (j == 0 ||
-            tokens[j-1].type == TK_ADD || tokens[j-1].type == TK_SUB ||
-            tokens[j-1].type == TK_MUL || tokens[j-1].type == TK_DIV ||
-            tokens[j-1].type == TK_EQ || tokens[j-1].type == TK_NEQ ||
-            tokens[j-1].type == TK_AND || 
-            tokens[j-1].type == TK_LPAREN ||
-            tokens[j-1].type == TK_NEG || tokens[j-1].type == TK_DEREF) {
-          tokens[j].type = TK_DEREF;   // 改为解引用
-        }
+      if (j == 0 ||
+          tokens[j-1].type == TK_ADD || tokens[j-1].type == TK_SUB ||
+          tokens[j-1].type == TK_MUL || tokens[j-1].type == TK_DIV ||
+          tokens[j-1].type == TK_EQ || tokens[j-1].type == TK_NEQ ||
+          tokens[j-1].type == TK_AND || 
+          tokens[j-1].type == TK_LPAREN ||
+          tokens[j-1].type == TK_NEG || tokens[j-1].type == TK_DEREF) {
+        tokens[j].type = TK_DEREF;   // 改为解引用
+      }
     }
   }
   return true;

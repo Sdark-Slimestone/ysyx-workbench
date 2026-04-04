@@ -44,8 +44,8 @@ int main(int argc, char *argv[]) {
     init_regex();
     FILE *fp; // 文件指针
     if (test_file != NULL) {
-      fp = fopen(test_file, "r"); // 打开指定的文件
-      if (fp == NULL) { // 如果打开失败
+      fp = fopen(test_file, "r"); 
+      if (fp == NULL) { 
         printf("打不开文件\n");
         return 1;
       }
@@ -54,21 +54,20 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    char line[65536];        // 用来存放读到的每一行文字
-    int total = 0, passed = 0; // 统计总数和通过数
+    char line[65536];        
+    int total = 0, passed = 0; 
 
     // 一行一行读文件内容，直到读完
     while (fgets(line, sizeof(line), fp)) {
-      unsigned expected;     // 存放从文件里读到的预期结果
-      char expr_str[65536];  // 存放从文件里读到的表达式
-      // 从这一行中解析出 "结果 表达式"，例如 "42 1+2"
+      unsigned expected;     
+      char expr_str[65536];  
       // %u 读无符号整数，%[^\n] 读剩下的所有字符直到换行
       if (sscanf(line, "%u %[^\n]", &expected, expr_str) != 2) { 
-        continue; // 如果格式不对，跳过这一行
+        continue; 
       }
       total++; // 总行数加1
       bool success; // 用来接收expr函数是否成功
-      word_t result = expr(expr_str, &success); // 调用函数计算
+      word_t result = expr(expr_str, &success); 
 
       if (success) {
         if (result == expected) {

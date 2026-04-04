@@ -61,6 +61,6 @@ int main(int argc, char *argv[]) {
 }
 
 
-//小抄↓
+//make命令
 //make ARCH=native
 //./build/minirv-native.elf

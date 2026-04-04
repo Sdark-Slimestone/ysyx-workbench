@@ -125,7 +125,7 @@ static void gen_expr(int depth) {
                 strcat(buf, "(unsigned)(");
                 gen_expr(depth + 1);   // 左操作数
                 gen_space();
-                // 避免连续减号（仅当 op 为 "-" 时有效，但保留检查）
+                // 避免连续减号
                 if (strcmp(op, "-") == 0 && buf[0] != '\0' && buf[strlen(buf)-1] == '-') {
                     strcat(buf, " ");
                 }
@@ -174,15 +174,15 @@ int main(int argc, char *argv[]) {
         char cmd[256];
         snprintf(cmd, sizeof(cmd), "gcc /tmp/.code.c -o /tmp/.expr 2>&1");  //把命令存入cmd数组
         FILE *compile_fp = popen(cmd, "r");                                 //启动子进程，输出到屏幕的同时结果写入管道
-        if (compile_fp == NULL) {                                           //启动子进程失败就跳过
+        if (compile_fp == NULL) {                                           
             continue;
         }
         char output[1024] = {0};
         size_t n = fread(output, 1, sizeof(output)-1, compile_fp);          //把管道里的输出读出来
         (void)n;
-        int ret = pclose(compile_fp);                                          //关闭管道
+        int ret = pclose(compile_fp);                                         
         if (ret != 0 || strstr(output, "division by zero") != NULL) {  //检查除以0警告
-            continue;                                                   //有除以0就跳过
+            continue;                                                  
         }
 
         fp = popen("/tmp/.expr", "r");

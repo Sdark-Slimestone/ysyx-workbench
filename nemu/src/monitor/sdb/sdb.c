@@ -119,7 +119,7 @@ static int cmd_si(char *args) {
       cpu_exec(n);
       return 0;
     }else{
-      printf("参数解析成功，n = %lu\n,如n=0，则什么都不做捏\n", n);
+      printf("参数解析成功，n = %lu\n,如n=0，则什么都不做\n", n);
       cpu_exec(n);
       return 0;
     }
@@ -230,14 +230,14 @@ void sdb_mainloop() {                            //sdb主循环
 
     /* extract the first token as the command */
     char *cmd = strtok(str, " ");                     //把输入的字符串按空格拆分，取第一个词当“命令”
-    if (cmd == NULL) { continue; }                    // 如果只按了回车（没输入任何东西），重新等输入
+    if (cmd == NULL) { continue; }                    
 
     /* treat the remaining string as the arguments,
      * which may need further parsing
      */
     char *args = cmd + strlen(cmd) + 1;         // 命令后面的部分当“参数”
-    if (args >= str_end) {                       // 如果只有命令没有参数
-      args = NULL;                                  // 把参数设为NULL，避免后续出错
+    if (args >= str_end) {                       
+      args = NULL;                                  
     }
 
 #ifdef CONFIG_DEVICE
