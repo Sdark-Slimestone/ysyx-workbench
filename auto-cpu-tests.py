@@ -3,15 +3,12 @@ import subprocess
 import os
 import time
 
-TEST_DIR = "/home/sdark/ysyx-workbench/am-kernels/tests/cpu-tests"
-ARCH = "riscv32-nemu"
-
 def run_test(name):
     print(f"Running {name}...", end=" ", flush=True)
-    os.chdir(TEST_DIR)
-    # 启动 NEMU，通过管道读写
+    # 直接使用完整的测试根目录
+    os.chdir("/home/sdark/ysyx-workbench/am-kernels/tests/cpu-tests")  #cd xxx
     proc = subprocess.Popen(
-        ["make", f"ARCH={ARCH}", f"ALL={name}", "run"],
+        ["make", "ARCH=riscv32-nemu", f"ALL={name}", "run"],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -19,7 +16,6 @@ def run_test(name):
         bufsize=1
     )
     try:
-        # 等待 (nemu) 提示符出现
         output = ""
         while True:
             char = proc.stdout.read(1)
@@ -27,11 +23,9 @@ def run_test(name):
                 break
             output += char
             if "(nemu)" in output:
-                # 发送 c 命令
                 proc.stdin.write("c\n")
                 proc.stdin.flush()
                 break
-        # 继续读取直到遇到 HIT GOOD TRAP 或超时
         timeout = 30
         start = time.time()
         success = False
@@ -45,7 +39,6 @@ def run_test(name):
                 break
             if "nemu: ABORT" in line or "out of bound" in line or "invalid opcode" in line:
                 break
-        # 发送 q 退出
         proc.stdin.write("q\n")
         proc.stdin.flush()
         proc.wait(timeout=2)
@@ -60,7 +53,8 @@ def run_test(name):
     return success
 
 def main():
-    tests_dir = os.path.join(TEST_DIR, "tests")
+    # 直接使用完整的测试用例目录路径
+    tests_dir = "/home/sdark/ysyx-workbench/am-kernels/tests/cpu-tests/tests"
     tests = []
     for f in os.listdir(tests_dir):
         if f.endswith(".c"):
@@ -70,7 +64,7 @@ def main():
     for t in tests:
         if run_test(t):
             passed += 1
-        time.sleep(0.5)  # 避免过快启动
+        time.sleep(0)
     print(f"\nPassed {passed} / {len(tests)}")
 
 if __name__ == "__main__":
