@@ -16,4 +16,4 @@ AM_SRCS += riscv/npc/libgcc/div.S \
            riscv/npc/libgcc/unused.c
 
 run: $(IMAGE).bin
-	/home/sdark/cpu_project/MyChisel/verilog/obj_dir/npc $<
+	/home/sdark/cpu_project/cpu-core/minirv/npc-core/npc $<
