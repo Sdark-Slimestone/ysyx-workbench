@@ -22,12 +22,12 @@ typedef void(*io_callback_t)(uint32_t, int, bool);
 uint8_t* new_space(int size);
 
 typedef struct {
-  const char *name;
+  const char *name;                        //名字
   // we treat ioaddr_t as paddr_t here
-  paddr_t low;
-  paddr_t high;
-  void *space;
-  io_callback_t callback;
+  paddr_t low;                             //映射起始
+  paddr_t high;                            //映射结束
+  void *space;                             //映射目标空间
+  io_callback_t callback;                   //回调函数
 } IOMap;
 
 static inline bool map_inside(IOMap *map, paddr_t addr) {

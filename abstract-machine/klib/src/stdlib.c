@@ -30,16 +30,22 @@ int atoi(const char* nptr) {
 }
 
 void *malloc(size_t size) {
-  // On native, malloc() will be called during initializaion of C runtime.
-  // Therefore do not call panic() here, else it will yield a dead recursion:
-  //   panic() -> putchar() -> (glibc) -> malloc() -> panic()
-#if !(defined(__ISA_NATIVE__) && defined(__NATIVE_USE_KLIB__))
-  panic("Not implemented");
-#endif
-  return NULL;
+    static char *heap_ptr = NULL;
+    if (heap_ptr == NULL) {
+        heap_ptr = (char *)heap.start;   // 使用 AM 的堆起始地址:/home/sdark/ysyx-workbench/abstract-machine/am/include/am.h
+    }
+    size = (size + 7) & ~7;              // 8字节对齐
+    if (heap_ptr + size > (char *)heap.end) {
+        return NULL;                     // 堆空间不足
+    }
+    void *ptr = heap_ptr;
+    heap_ptr += size;
+    return ptr;
 }
 
 void free(void *ptr) {
+    // 空实现
 }
+
 
 #endif

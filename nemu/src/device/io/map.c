@@ -18,6 +18,8 @@
 #include <memory/vaddr.h>
 #include <device/map.h>
 
+//#define CONFIG_DTRACE
+
 #define IO_SPACE_MAX (32 * 1024 * 1024)
 
 static uint8_t *io_space = NULL;
@@ -53,6 +55,10 @@ void init_map() {
 }
 
 word_t map_read(paddr_t addr, int len, IOMap *map) {
+  #ifdef CONFIG_DTRACE
+    printf("dtrace: read  %s +0x%x, len=%d\n", 
+           map->name, addr - map->low, len);
+  #endif
   assert(len >= 1 && len <= 8);
   check_bound(map, addr);
   paddr_t offset = addr - map->low;
@@ -62,6 +68,10 @@ word_t map_read(paddr_t addr, int len, IOMap *map) {
 }
 
 void map_write(paddr_t addr, int len, word_t data, IOMap *map) {
+  #ifdef CONFIG_DTRACE
+    printf("dtrace: write %s +0x%x, len=%d, data=0x%08x\n", 
+           map->name, addr - map->low, len, data);
+  #endif
   assert(len >= 1 && len <= 8);
   check_bound(map, addr);
   paddr_t offset = addr - map->low;
