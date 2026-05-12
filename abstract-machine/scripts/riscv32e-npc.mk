@@ -8,3 +8,6 @@ AM_SRCS += riscv/npc/libgcc/div.S \
            riscv/npc/libgcc/multi3.c \
            riscv/npc/libgcc/ashldi3.c \
            riscv/npc/libgcc/unused.c
+
+run: $(IMAGE).bin
+	/home/sdark/cpu_project/cpu-core/rv32e/npc-core/rv32e $<
