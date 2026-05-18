@@ -126,8 +126,68 @@ static int decode_exec(Decode *s) {
   INSTPAT("0000001 ????? ????? 111 ????? 01100 11", remu, R, R(rd) = (src2 == 0) ? src1 : (src1 % src2));
   // System
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak, N, NEMUTRAP(s->pc, R(10)));
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall, N, {
+    printf("ecall: pc=%x, mtvec=%x\n", s->pc, cpu.mtvec);
+    s->dnpc = isa_raise_intr(8, s->pc);
+    printf("ecall: dnpc=%x\n", s->dnpc);
+  });
+  // csrrw: rd = csr; csr = rs1
+  INSTPAT("???????????? ????? 001 ????? 11100 11", csrrw, I, {
+    uint32_t inst = s->isa.inst;
+    uint32_t addr = BITS(inst, 31, 20);
+    word_t old = 0;
+    //printf("csrrw: addr=0x%x, src1=0x%x\n", addr, src1);
+    switch (addr) {
+      case 0x300: old = cpu.mstatus; cpu.mstatus = src1; break;
+      case 0x305: old = cpu.mtvec;   cpu.mtvec   = src1; /*printf("csrrw: set mtvec to 0x%x\n", cpu.mtvec);*/ break;
+      case 0x341: old = cpu.mepc;    cpu.mepc    = src1; break;
+      case 0x342: old = cpu.mcause;  cpu.mcause  = src1; break;
+      default: old = 0; break;
+    }
+    R(rd) = old;
+  });
+
+  // csrrs: rd = csr; csr |= rs1
+  INSTPAT("???????????? ????? 010 ????? 11100 11", csrrs, I, {
+    uint32_t inst = s->isa.inst;
+    uint32_t addr = BITS(inst, 31, 20);
+    word_t old = 0;
+    switch (addr) {
+      case 0x300: old = cpu.mstatus; cpu.mstatus |= src1; break;
+      case 0x305: old = cpu.mtvec;   cpu.mtvec   |= src1; break;
+      case 0x341: old = cpu.mepc;    cpu.mepc    |= src1; break;
+      case 0x342: old = cpu.mcause;  cpu.mcause  |= src1; break;
+      default: old = 0; break;
+    }
+    R(rd) = old;
+  });
+
+  // csrrwi: rd = csr; csr = uimm (立即数)
+  INSTPAT("???????????? ????? 101 ????? 11100 11", csrrwi, I, {
+    uint32_t inst = s->isa.inst;
+    uint32_t addr = BITS(inst, 31, 20);
+    word_t old = 0;
+    word_t imm = src1;   // src1 已经是 decode_operand 处理好的立即数（零扩展）
+    switch (addr) {
+      case 0x300: old = cpu.mstatus; cpu.mstatus = imm; break;
+      case 0x305: old = cpu.mtvec;   cpu.mtvec   = imm; break;
+      case 0x341: old = cpu.mepc;    cpu.mepc    = imm; break;
+      case 0x342: old = cpu.mcause;  cpu.mcause  = imm; break;
+      default: old = 0; break;
+    }
+    R(rd) = old;
+  });
+
+  // mret: 从机器模式异常返回
+  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret, N, {
+    s->dnpc = cpu.mepc;   // 将 mepc 的值作为下一条指令地址
+  });
+
+  
   // Fallback
   INSTPAT("??????? ????? ????? ??? ????? ????? ??", inv, N, INV(s->pc));
+
+
   INSTPAT_END();
 
   R(0) = 0;
