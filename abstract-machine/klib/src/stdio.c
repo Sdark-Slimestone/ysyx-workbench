@@ -12,10 +12,10 @@ int printf(const char *format, ...) {
     while ((i = *format++) != '\0') {
         if (i == '%') {
             i = *format++;
-            /* Handle 'l' and 'll' length modifiers */
+            /* 处理 'l' 和 'll' 长度修饰符 */
             if (i == 'l') {
                 i = *format++;
-                if (i == 'l') i = *format++; /* Skip second 'l' for 'll' */
+                if (i == 'l') i = *format++; /* 跳过第二个 'l'（针对 'll'） */
             }
             if (i == '\0') break;
             switch (i) {
@@ -105,7 +105,7 @@ int printf(const char *format, ...) {
 }
 
 int vsprintf(char *out, const char *fmt, va_list ap) {
-  panic("Not implemented");
+  panic("未实现");
 }
 
 int sprintf(char *out, const char *fmt, ...) {
@@ -184,7 +184,7 @@ int sprintf(char *out, const char *fmt, ...) {
                     break;
                 }
                 default:
-                    // 未知格式：原样输出 % 和字符
+                    /* 未知格式：原样输出 % 和字符 */
                     *p++ = '%';
                     *p++ = c;
                     break;
@@ -197,11 +197,11 @@ int sprintf(char *out, const char *fmt, ...) {
 }
 
 int snprintf(char *out, size_t n, const char *fmt, ...) {
-  panic("Not implemented");
+  panic("未实现");
 }
 
 int vsnprintf(char *out, size_t n, const char *fmt, va_list ap) {
-  panic("Not implemented");
+  panic("未实现");
 }
 
 #endif
