@@ -127,9 +127,9 @@ static int decode_exec(Decode *s) {
   // System
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak, N, NEMUTRAP(s->pc, R(10)));
   INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall, N, {
-    printf("ecall: pc=%x, mtvec=%x\n", s->pc, cpu.mtvec);
+    //printf("ecall: pc=%x, mtvec=%x\n", s->pc, cpu.mtvec);
     s->dnpc = isa_raise_intr(8, s->pc);
-    printf("ecall: dnpc=%x\n", s->dnpc);
+    //printf("ecall: dnpc=%x\n", s->dnpc);
   });
   // csrrw: rd = csr; csr = rs1
   INSTPAT("???????????? ????? 001 ????? 11100 11", csrrw, I, {
@@ -173,6 +173,54 @@ static int decode_exec(Decode *s) {
       case 0x305: old = cpu.mtvec;   cpu.mtvec   = imm; break;
       case 0x341: old = cpu.mepc;    cpu.mepc    = imm; break;
       case 0x342: old = cpu.mcause;  cpu.mcause  = imm; break;
+      default: old = 0; break;
+    }
+    R(rd) = old;
+  });
+
+  // csrrc: rd = csr; csr &= ~rs1
+  INSTPAT("???????????? ????? 011 ????? 11100 11", csrrc, I, {
+    uint32_t inst = s->isa.inst;
+    uint32_t addr = BITS(inst, 31, 20);
+    word_t old = 0;
+    word_t mask = src1;
+    switch (addr) {
+      case 0x300: old = cpu.mstatus; cpu.mstatus &= ~mask; break;
+      case 0x305: old = cpu.mtvec;   cpu.mtvec   &= ~mask; break;
+      case 0x341: old = cpu.mepc;    cpu.mepc    &= ~mask; break;
+      case 0x342: old = cpu.mcause;  cpu.mcause  &= ~mask; break;
+      default: old = 0; break;
+    }
+    R(rd) = old;
+  });
+
+  // csrrsi: rd = csr; csr |= uimm
+  INSTPAT("???????????? ????? 110 ????? 11100 11", csrrsi, I, {
+    uint32_t inst = s->isa.inst;
+    uint32_t addr = BITS(inst, 31, 20);
+    word_t old = 0;
+    word_t uimm = src1;
+    switch (addr) {
+      case 0x300: old = cpu.mstatus; cpu.mstatus |= uimm; break;
+      case 0x305: old = cpu.mtvec;   cpu.mtvec   |= uimm; break;
+      case 0x341: old = cpu.mepc;    cpu.mepc    |= uimm; break;
+      case 0x342: old = cpu.mcause;  cpu.mcause  |= uimm; break;
+      default: old = 0; break;
+    }
+    R(rd) = old;
+  });
+
+  // csrrci: rd = csr; csr &= ~uimm
+  INSTPAT("???????????? ????? 111 ????? 11100 11", csrrci, I, {
+    uint32_t inst = s->isa.inst;
+    uint32_t addr = BITS(inst, 31, 20);
+    word_t old = 0;
+    word_t uimm = src1;
+    switch (addr) {
+      case 0x300: old = cpu.mstatus; cpu.mstatus &= ~uimm; break;
+      case 0x305: old = cpu.mtvec;   cpu.mtvec   &= ~uimm; break;
+      case 0x341: old = cpu.mepc;    cpu.mepc    &= ~uimm; break;
+      case 0x342: old = cpu.mcause;  cpu.mcause  &= ~uimm; break;
       default: old = 0; break;
     }
     R(rd) = old;

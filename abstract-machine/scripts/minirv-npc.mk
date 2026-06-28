@@ -16,4 +16,4 @@ AM_SRCS += riscv/npc/libgcc/div.S \
            riscv/npc/libgcc/unused.c
 
 run: $(IMAGE).bin
-	/home/sdark/cpu_project/cpu-core/minirv/npc-core/npc-io $<
+	/home/sdark/cpu_project/temper_npc/obj_dir/npc $<

@@ -10,4 +10,4 @@ AM_SRCS += riscv/npc/libgcc/div.S \
            riscv/npc/libgcc/unused.c
 
 run: $(IMAGE).bin
-	/home/sdark/cpu_project/cpu-core/R1322IAe/npc-core/npc $<
+	/home/sdark/cpu_project/cpu-core/R1322IAe/npc-core/npc-2R1W-2bank-1 $<
