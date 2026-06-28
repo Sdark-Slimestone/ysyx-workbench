@@ -6,13 +6,18 @@
 #if !defined(__ISA_NATIVE__) || defined(__NATIVE_USE_KLIB__)
 
 int printf(const char *format, ...) {
-  putch('P');
   va_list ap;
     char i;
     va_start(ap, format);
     while ((i = *format++) != '\0') {
         if (i == '%') {
             i = *format++;
+            /* Handle 'l' and 'll' length modifiers */
+            if (i == 'l') {
+                i = *format++;
+                if (i == 'l') i = *format++; /* Skip second 'l' for 'll' */
+            }
+            if (i == '\0') break;
             switch (i) {
                 case 'c': {
                     char ch = va_arg(ap, int);
@@ -21,7 +26,6 @@ int printf(const char *format, ...) {
                 }
                 case 's': {
                     char *sh = va_arg(ap, char *);
-                    // 逐个字符输出
                     while (*sh) putch(*sh++);
                     break;
                 }
