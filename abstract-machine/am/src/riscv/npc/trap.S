@@ -55,8 +55,12 @@ __am_asm_trap:
   mv a0, sp
   call __am_irq_handle
 
+  # 将返回的新 Context* 设为栈指针（支持上下文切换）
+  mv sp, a0
+
   LOAD t1, OFFSET_STATUS(sp)
   LOAD t2, OFFSET_EPC(sp)
+  addi t2, t2, 4
   csrw mstatus, t1
   csrw mepc, t2
 
